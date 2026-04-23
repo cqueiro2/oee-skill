@@ -1,0 +1,2 @@
+# OEE Skill - Requirements
+asciimatics>=1.15.0

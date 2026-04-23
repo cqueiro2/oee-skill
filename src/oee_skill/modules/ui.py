@@ -10,6 +10,10 @@ from asciimatics.widgets import Widget
 from asciimatics.exceptions import NextScene, StopApplication
 from utils import format_oee_label, calculate_oee, calculate_status, calculate_mttr, calculate_mtbf
 
+DEFAULT_OEE = "OEE: 0.00%"
+DEFAULT_STATUS = "STATUS: -"
+DEFAULT_METRICS = "0.00h"
+
 
 class ListFrame(Frame):
     def __init__(self, screen, manager, data):
@@ -40,7 +44,7 @@ class ListFrame(Frame):
             return []
         return [(format_oee_label(r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12], r[13], r[14]), r[0]) for r in records]
 
-    def _add(self):
+    def _clear_data(self):
         self.data["id"] = None
         self.data["machine"] = ""
         self.data["equipment_number"] = ""
@@ -49,13 +53,16 @@ class ListFrame(Frame):
         self.data["action_to_avoid"] = ""
         self.data["register_date"] = datetime.now().strftime("%d/%m/%Y")
         self.data["release_date"] = ""
-        self.data["responsible"] = "0"
+        self.data["responsible"] = ""
         self.data["lost_units"] = ""
         self.data["total_production"] = ""
         self.data["planned_hours"] = ""
         self.data["availability"] = ""
         self.data["performance"] = ""
         self.data["quality"] = ""
+
+    def _add(self):
+        self._clear_data()
         raise NextScene("Edit")
 
     def _edit(self):
@@ -80,8 +87,8 @@ class ListFrame(Frame):
         self.data["total_production"] = str(rec[10] or "")
         self.data["planned_hours"] = str(rec[11] or "")
         self.data["availability"] = str(rec[12])
-        self.data["performance"] = str(rec[12])
-        self.data["quality"] = str(rec[13])
+        self.data["performance"] = str(rec[13])
+        self.data["quality"] = str(rec[14])
         self.save()
         raise NextScene("Edit")
 
@@ -104,10 +111,10 @@ class EditFrame(Frame):
         self.manager = manager
         self._list_frame = list_frame
         
-        self._oee_label = Label("OEE: 0.00%")
-        self._status_label = Label("STATUS: -")
-        self._mttr_label = Label("MTTR: 0.00h")
-        self._mtbf_label = Label("MTBF: 0.00h")
+        self._oee_label = Label(DEFAULT_OEE)
+        self._status_label = Label(DEFAULT_STATUS)
+        self._mttr_label = Label(f"MTTR: {DEFAULT_METRICS}")
+        self._mtbf_label = Label(f"MTBF: {DEFAULT_METRICS}")
         
         layout = Layout([100])
         self.add_layout(layout)
@@ -163,14 +170,14 @@ class EditFrame(Frame):
     def _update_oee(self):
         try:
             self.save()
-            disp = float(self.data["availability"] or 0)
-            perf = float(self.data["performance"] or 0)
-            qual = float(self.data["quality"] or 0)
+            availability = float(self.data["availability"] or 0)
+            performance = float(self.data["performance"] or 0)
+            quality = float(self.data["quality"] or 0)
             planned_hours = float(self.data["planned_hours"] or 0)
             lost_units = int(self.data["lost_units"] or 0)
             total_production = int(self.data["total_production"] or 0)
             
-            oee = calculate_oee(disp, perf, qual)
+            oee = calculate_oee(availability, performance, quality)
             status = calculate_status(oee)
             mttr = calculate_mttr(planned_hours, lost_units)
             mtbf = calculate_mtbf(planned_hours, lost_units, total_production)
@@ -181,9 +188,9 @@ class EditFrame(Frame):
             self._mtbf_label.text = f"MTBF: {mtbf:.2f}h"
         except ValueError:
             self._oee_label.text = "OEE: ERRO"
-            self._status_label.text = "STATUS: -"
-            self._mttr_label.text = "MTTR: 0.00h"
-            self._mtbf_label.text = "MTBF: 0.00h"
+            self._status_label.text = DEFAULT_STATUS
+            self._mttr_label.text = f"MTTR: {DEFAULT_METRICS}"
+            self._mtbf_label.text = f"MTBF: {DEFAULT_METRICS}"
 
     def _save(self):
         self.save()
