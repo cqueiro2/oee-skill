@@ -17,26 +17,81 @@ DEFAULT_METRICS = "0.00h"
 
 class ListFrame(Frame):
     def __init__(self, screen, manager, data):
-        super().__init__(screen, screen.height, screen.width, data=data, title="SISTEMA OEE")
+        super().__init__(screen, screen.height, screen.width, data=data, title="SISTEMA OEE - DASHBOARD")
         self.manager = manager
         
-        layout = Layout([100], fill_frame=True)
+        # Layout principal: 30% Lista, 70% Detalhes
+        layout = Layout([30, 70], fill_frame=True)
         self.add_layout(layout)
-        self._list = ListBox(Widget.FILL_FRAME, self._get_options(), name="selection")
-        layout.add_widget(self._list)
-        layout.add_widget(Divider())
         
+        # Coluna da Esquerda: Lista
+        self._list = ListBox(Widget.FILL_FRAME, self._get_options(), name="selection", on_change=self._on_select)
+        layout.add_widget(self._list, 0)
+        
+        # Coluna da Direita: Detalhes
+        self._details_label = Label("DETALHES DO REGISTRO SELECIONADO", align="^")
+        layout.add_widget(self._details_label, 1)
+        layout.add_widget(Divider(), 1)
+        
+        self._detail_widgets = {}
+        fields = [
+            ("Máquina", "machine"), ("Equipamento", "equipment_number"), ("Estação", "workstation"),
+            ("Responsável", "responsible"), ("Data Registro", "register_date"), ("Previsão Liberação", "release_date"),
+            ("Tipo Ocorrência", "occurrence_type"), ("Ação para Evitar", "action_to_avoid"),
+            ("Horas Planejadas", "planned_hours"), ("Produção Total", "total_production"), ("Unidades Perdidas", "lost_units"),
+            ("Disponibilidade", "availability"), ("Performance", "performance"), ("Qualidade", "quality")
+        ]
+        
+        for label, key in fields:
+            w = Label(f"{label}: -")
+            self._detail_widgets[key] = w
+            layout.add_widget(w, 1)
+        
+        layout.add_widget(Divider(), 1)
+        self._oee_dashboard = Label("OEE GLOBAL: 0.00%", align="^")
+        layout.add_widget(self._oee_dashboard, 1)
+        
+        # Botões na parte inferior
+        layout.add_widget(Divider(), 0)
         buttons = Layout([1, 1, 1, 1])
         self.add_layout(buttons)
         buttons.add_widget(Button("Novo", self._add), 0)
         buttons.add_widget(Button("Editar", self._edit), 1)
         buttons.add_widget(Button("Excluir", self._delete), 2)
         buttons.add_widget(Button("Sair", self._quit), 3)
+        
         self.fix()
+        self._on_select()
+
+    def _on_select(self):
+        if self._list.value is None:
+            return
+        
+        rec = self.manager.get_by_id(self._list.value)
+        if rec:
+            # rec order: id, machine, equipment_number, workstation, occurrence_type, action_to_avoid, 
+            # register_date, release_date, responsible, lost_units, total_production, planned_hours, 
+            # availability, performance, quality
+            data_map = {
+                "machine": rec[1], "equipment_number": rec[2], "workstation": rec[3],
+                "occurrence_type": rec[4], "action_to_avoid": rec[5], "register_date": rec[6],
+                "release_date": rec[7], "responsible": rec[8], "lost_units": str(rec[9]),
+                "total_production": str(rec[10]), "planned_hours": str(rec[11]),
+                "availability": f"{rec[12]}%", "performance": f"{rec[13]}%", "quality": f"{rec[14]}%"
+            }
+            
+            for key, val in data_map.items():
+                if key in self._detail_widgets:
+                    label_text = key.replace("_", " ").title()
+                    self._detail_widgets[key].text = f"{label_text}: {val}"
+            
+            oee = calculate_oee(rec[12], rec[13], rec[14])
+            self._oee_dashboard.text = f"OEE GLOBAL: {oee:.2%}"
 
     def reset(self):
         super().reset()
         self._list.options = self._get_options()
+        self._on_select()
 
     def _get_options(self):
         records = self.manager.get_all()
@@ -66,12 +121,10 @@ class ListFrame(Frame):
         raise NextScene("Edit")
 
     def _edit(self):
-        options = self._get_options()
-        if not options:
+        if self._list.value is None:
             return
         
-        record_id = options[0][1]
-        rec = self.manager.get_by_id(record_id)
+        rec = self.manager.get_by_id(self._list.value)
         if rec is None:
             return
         self.data["id"] = rec[0]

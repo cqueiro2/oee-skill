@@ -1,30 +1,14 @@
-File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 57, in <module>
+Traceback (most recent call last):
+  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 57, in <module>
     main()
-  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 53, in main
-    skill.launch()
-  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 48, in launch
-    Screen.wrapper(self.run)
-  File "D:\lab\14_Projects\OEE\.venv\Lib\site-packages\asciimatics\screen.py", line 1431, in wrapper
-    return func(screen)
-           ^^^^^^^^^^^^
-  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 45, in run
-    screen.play(scenes, stop_on_resize=False, start_scene=scenes[0])
-  File "D:\lab\14_Projects\OEE\.venv\Lib\site-packages\asciimatics\screen.py", line 1602, in play
-    self.draw_next_frame(repeat=repeat)
-  File "D:\lab\14_Projects\OEE\.venv\Lib\site-packages\asciimatics\screen.py", line 1690, in draw_next_frame
-    event = scene.process_event(event)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\lab\14_Projects\OEE\.venv\Lib\site-packages\asciimatics\scene.py", line 98, in process_event
-    event = effect.process_event(event)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\lab\14_Projects\OEE\.venv\Lib\site-packages\asciimatics\widgets\frame.py", line 748, in process_event
-    if layout.process_event(event, self._hover_focus) is None:
-       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\lab\14_Projects\OEE\.venv\Lib\site-packages\asciimatics\widgets\layout.py", line 456, in process_event
-    widget.process_event(event)
-  File "D:\lab\14_Projects\OEE\.venv\Lib\site-packages\asciimatics\widgets\button.py", line 68, in process_event
-    self._on_click()
-  File "D:\lab\14_Projects\OEE\src\oee_skill\modules\ui.py", line 48, in _add
-    self._clear_data()
-    ^^^^^^^^^^^^^^^^
-AttributeError: 'ListFrame' object has no attribute '_clear_data'
+  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 52, in main
+    skill = OEESkill()
+            ^^^^^^^^^^
+  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 17, in __init__
+    self.manager = Database(db_path)
+                   ^^^^^^^^^^^^^^^^^
+  File "D:\lab\14_Projects\OEE\src\oee_skill\modules\database.py", line 14, in __init__
+    self._seed_data()
+  File "D:\lab\14_Projects\OEE\src\oee_skill\modules\database.py", line 46, in _seed_data
+    self.cursor.executemany(
+sqlite3.OperationalError: 15 values for 14 columns

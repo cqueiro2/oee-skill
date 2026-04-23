@@ -18,9 +18,16 @@ def calculate_mtbf(planned_hours: float, lost_units: int, total_production: int)
 
 
 def format_oee_label(machine: str, equipment_number: str = "", workstation: str = "", occurrence_type: str = "", action_to_avoid: str = "", register_date: str = "", release_date: str = "", responsible: str = "", lost_units: int = 0, total_production: int = 0, planned_hours: float = 0, availability: float = 0, performance: float = 0, quality: float = 0) -> str:
-    """Formata label para ListBox"""
+    """Formata label para ListBox com múltiplas informações"""
     oee = calculate_oee(availability, performance, quality)
-    return f"{machine.ljust(15)} | {equipment_number.ljust(8)} | OEE: {oee:>7.2%}"
+    
+    # Truncar textos longos para manter o layout limpo
+    m = (machine[:12] + "..") if len(machine) > 12 else machine.ljust(12)
+    e = (equipment_number[:8] + "..") if len(equipment_number) > 8 else equipment_number.ljust(8)
+    w = (workstation[:10] + "..") if len(workstation) > 10 else workstation.ljust(10)
+    r = (responsible[:10] + "..") if len(responsible) > 10 else responsible.ljust(10)
+    
+    return f"{m} | {e} | {w} | {register_date} | {r} | OEE: {oee:>6.1%}"
 
 
 def calculate_status(oee: float) -> str:
