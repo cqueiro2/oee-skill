@@ -5,7 +5,7 @@ from datetime import datetime
 BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_PATH)
 
-from asciimatics.widgets import Frame, ListBox, Layout, Divider, Button, Text, Label, TextBox
+from asciimatics.widgets import Frame, ListBox, Layout, Divider, Button, Text, Label, TextBox, DropdownList
 from asciimatics.widgets import Widget
 from asciimatics.exceptions import NextScene, StopApplication
 from utils import format_oee_label, calculate_oee, calculate_status, calculate_mttr, calculate_mtbf
@@ -185,15 +185,28 @@ class ListFrame(Frame):
 
 class EditFrame(Frame):
     def __init__(self, screen, manager, data, list_frame):
-        super().__init__(screen, 24, 70, data=data, title="CADASTRO DE EQUIPAMENTO", can_scroll=False)
+        super().__init__(screen, 26, 72, data=data, title="CADASTRO DE EQUIPAMENTO", can_scroll=False)
         self.manager = manager
         self._list_frame = list_frame
 
-        self._oee_label = Label(DEFAULT_OEE)
+        self._oee_label    = Label(DEFAULT_OEE)
         self._status_label = Label(DEFAULT_STATUS)
-        self._mttr_label = Label(f"MTTR: {DEFAULT_METRICS}")
-        self._mtbf_label = Label(f"MTBF: {DEFAULT_METRICS}")
+        self._mttr_label   = Label(f"MTTR: {DEFAULT_METRICS}")
+        self._mtbf_label   = Label(f"MTBF: {DEFAULT_METRICS}")
 
+        # --- Filtro de registros ---
+        layout0 = Layout([100])
+        self.add_layout(layout0)
+        self._dropdown = DropdownList(
+            self._get_machine_options(),
+            label="Filtrar Maquina:",
+            name="filter_machine",
+            on_change=self._on_filter_select,
+        )
+        layout0.add_widget(self._dropdown)
+        layout0.add_widget(Divider())
+
+        # --- Campos do formulario ---
         layout = Layout([100])
         self.add_layout(layout)
         layout.add_widget(Text("Maquina:", "machine"))
@@ -215,53 +228,111 @@ class EditFrame(Frame):
 
         layout4 = Layout([1, 1, 1])
         self.add_layout(layout4)
-        layout4.add_widget(Text("Horas Plan:", "planned_hours", on_change=self._update_oee), 0)
-        layout4.add_widget(Text("Un. Perdidas:", "lost_units", on_change=self._update_oee), 1)
-        layout4.add_widget(Text("Prod. Total:", "total_production", on_change=self._update_oee), 2)
+        layout4.add_widget(Text("Horas Plan:",    "planned_hours",    on_change=self._update_oee), 0)
+        layout4.add_widget(Text("Un. Perdidas:",  "lost_units",       on_change=self._update_oee), 1)
+        layout4.add_widget(Text("Prod. Total:",   "total_production", on_change=self._update_oee), 2)
 
         layout5 = Layout([1, 1, 1])
         self.add_layout(layout5)
         layout5.add_widget(Text("Disponib. (%):", "availability", on_change=self._update_oee), 0)
-        layout5.add_widget(Text("Performance (%):", "performance", on_change=self._update_oee), 1)
-        layout5.add_widget(Text("Qualidade (%):", "quality", on_change=self._update_oee), 2)
+        layout5.add_widget(Text("Performance (%):","performance", on_change=self._update_oee), 1)
+        layout5.add_widget(Text("Qualidade (%):", "quality",      on_change=self._update_oee), 2)
 
         layout6 = Layout([1, 1, 1, 1])
         self.add_layout(layout6)
-        layout6.add_widget(self._oee_label, 0)
+        layout6.add_widget(self._oee_label,    0)
         layout6.add_widget(self._status_label, 1)
-        layout6.add_widget(self._mttr_label, 2)
-        layout6.add_widget(self._mtbf_label, 3)
+        layout6.add_widget(self._mttr_label,   2)
+        layout6.add_widget(self._mtbf_label,   3)
 
-        buttons = Layout([1, 1])
+        buttons = Layout([1, 1, 1])
         self.add_layout(buttons)
-        buttons.add_widget(Button("Salvar", self._save), 0)
-        buttons.add_widget(Button("Voltar", self._cancel), 1)
+        buttons.add_widget(Button("Novo",   self._new),    0)
+        buttons.add_widget(Button("Salvar", self._save),   1)
+        buttons.add_widget(Button("Voltar", self._cancel), 2)
         self.fix()
+
+    def _get_machine_options(self):
+        """Retorna opcoes para o DropdownList com todos os registros do banco."""
+        records = self.manager.get_all()
+        options = [("-- Novo Registro --", None)]
+        for rec in records:
+            label = f"{rec[1]} | {rec[2]} | {rec[3]}"
+            options.append((label[:60], rec[0]))
+        return options
+
+    def _on_filter_select(self):
+        """Carrega o registro selecionado no dropdown para os campos do formulario."""
+        if getattr(self, "_resetting", False):
+            return
+        self.save()
+        selected_id = self.data.get("filter_machine")
+        if selected_id is None:
+            # Novo registro - limpar campos
+            self._clear_fields()
+        else:
+            rec = self.manager.get_by_id(selected_id)
+            if rec:
+                self._load_rec(rec)
+        self._update_oee()
+
+    def _load_rec(self, rec):
+        """Carrega um registro (tupla do banco) nos campos do formulario."""
+        self.data["id"]               = rec[0]
+        self.data["machine"]          = rec[1]
+        self.data["equipment_number"] = rec[2] or ""
+        self.data["workstation"]      = rec[3] or ""
+        self.data["occurrence_type"]  = rec[4] or ""
+        self.data["action_to_avoid"]  = rec[5] or ""
+        self.data["register_date"]    = rec[6] or ""
+        self.data["release_date"]     = rec[7] or ""
+        self.data["responsible"]      = str(rec[8] or "")
+        self.data["lost_units"]       = str(rec[9] or "")
+        self.data["total_production"] = str(rec[10] or "")
+        self.data["planned_hours"]    = str(rec[11] or "")
+        self.data["availability"]     = str(rec[12])
+        self.data["performance"]      = str(rec[13])
+        self.data["quality"]          = str(rec[14])
+        # Recarregar widgets com os novos dados
+        super().reset()
+
+    def _clear_fields(self):
+        """Limpa todos os campos para um novo cadastro."""
+        self.data["id"] = None
+        for key in ["machine", "equipment_number", "workstation", "occurrence_type",
+                    "action_to_avoid", "register_date", "release_date", "responsible",
+                    "lost_units", "total_production", "planned_hours",
+                    "availability", "performance", "quality"]:
+            self.data[key] = ""
+        super().reset()
 
     def reset(self):
         self._resetting = True
-        # Buscar ID pendente diretamente do list_frame (evita o deep-copy do dict)
+        # Atualizar opcoes do dropdown com registros atuais
+        self._dropdown.options = self._get_machine_options()
+        # Pre-selecionar o registro sendo editado no dropdown
         pending_id = getattr(self._list_frame, "_pending_edit_id", None)
         if pending_id is not None:
+            self.data["filter_machine"] = pending_id
             rec = self.manager.get_by_id(pending_id)
             if rec:
-                self.data["id"] = rec[0]
-                self.data["machine"] = rec[1]
+                self.data["id"]               = rec[0]
+                self.data["machine"]          = rec[1]
                 self.data["equipment_number"] = rec[2] or ""
-                self.data["workstation"] = rec[3] or ""
-                self.data["occurrence_type"] = rec[4] or ""
-                self.data["action_to_avoid"] = rec[5] or ""
-                self.data["register_date"] = rec[6] or ""
-                self.data["release_date"] = rec[7] or ""
-                self.data["responsible"] = str(rec[8] or "")
-                self.data["lost_units"] = str(rec[9] or "")
+                self.data["workstation"]      = rec[3] or ""
+                self.data["occurrence_type"]  = rec[4] or ""
+                self.data["action_to_avoid"]  = rec[5] or ""
+                self.data["register_date"]    = rec[6] or ""
+                self.data["release_date"]     = rec[7] or ""
+                self.data["responsible"]      = str(rec[8] or "")
+                self.data["lost_units"]       = str(rec[9] or "")
                 self.data["total_production"] = str(rec[10] or "")
-                self.data["planned_hours"] = str(rec[11] or "")
-                self.data["availability"] = str(rec[12])
-                self.data["performance"] = str(rec[13])
-                self.data["quality"] = str(rec[14])
+                self.data["planned_hours"]    = str(rec[11] or "")
+                self.data["availability"]     = str(rec[12])
+                self.data["performance"]      = str(rec[13])
+                self.data["quality"]          = str(rec[14])
         else:
-            # Novo registro - limpar campos
+            self.data["filter_machine"] = None
             self.data["id"] = None
             for key in ["machine", "equipment_number", "workstation", "occurrence_type",
                         "action_to_avoid", "register_date", "release_date", "responsible",
@@ -273,6 +344,7 @@ class EditFrame(Frame):
         self._update_oee()
 
     def _update_oee(self):
+
         if getattr(self, "_resetting", False):
             return
         try:
@@ -298,6 +370,12 @@ class EditFrame(Frame):
             self._status_label.text = DEFAULT_STATUS
             self._mttr_label.text = f"MTTR: {DEFAULT_METRICS}"
             self._mtbf_label.text = f"MTBF: {DEFAULT_METRICS}"
+
+    def _new(self):
+        """Limpa campos para cadastrar um novo registro."""
+        self._list_frame._pending_edit_id = None
+        self._clear_fields()
+        self._update_oee()
 
     def _save(self):
         self.save()
