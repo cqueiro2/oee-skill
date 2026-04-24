@@ -261,50 +261,55 @@ class EditFrame(Frame):
             options.append((label[:60], rec[0]))
         return options
 
+    # Lista de campos editaveis (na ordem dos indices do banco)
+    _FIELD_MAP = [
+        (1,  "machine"),
+        (2,  "equipment_number"),
+        (3,  "workstation"),
+        (4,  "occurrence_type"),
+        (5,  "action_to_avoid"),
+        (6,  "register_date"),
+        (7,  "release_date"),
+        (8,  "responsible"),
+        (9,  "lost_units"),
+        (10, "total_production"),
+        (11, "planned_hours"),
+        (12, "availability"),
+        (13, "performance"),
+        (14, "quality"),
+    ]
+
+    def _set_widgets_from_rec(self, rec):
+        """Seta cada widget diretamente pelo nome, sem depender de self.data + reset."""
+        self.data["id"] = rec[0]
+        for idx, name in self._FIELD_MAP:
+            val = str(rec[idx]) if rec[idx] is not None else ""
+            w = self.find_widget(name)
+            if w is not None:
+                w.value = val
+
+    def _clear_widgets(self):
+        """Limpa todos os widgets diretamente."""
+        self.data["id"] = None
+        for _, name in self._FIELD_MAP:
+            w = self.find_widget(name)
+            if w is not None:
+                w.value = ""
+
     def _on_filter_select(self):
         """Carrega o registro selecionado no dropdown para os campos do formulario."""
         if getattr(self, "_resetting", False):
             return
-        self.save()
-        selected_id = self.data.get("filter_machine")
+        self._resetting = True
+        selected_id = self._dropdown.value
         if selected_id is None:
-            # Novo registro - limpar campos
-            self._clear_fields()
+            self._clear_widgets()
         else:
             rec = self.manager.get_by_id(selected_id)
             if rec:
-                self._load_rec(rec)
+                self._set_widgets_from_rec(rec)
+        self._resetting = False
         self._update_oee()
-
-    def _load_rec(self, rec):
-        """Carrega um registro (tupla do banco) nos campos do formulario."""
-        self.data["id"]               = rec[0]
-        self.data["machine"]          = rec[1]
-        self.data["equipment_number"] = rec[2] or ""
-        self.data["workstation"]      = rec[3] or ""
-        self.data["occurrence_type"]  = rec[4] or ""
-        self.data["action_to_avoid"]  = rec[5] or ""
-        self.data["register_date"]    = rec[6] or ""
-        self.data["release_date"]     = rec[7] or ""
-        self.data["responsible"]      = str(rec[8] or "")
-        self.data["lost_units"]       = str(rec[9] or "")
-        self.data["total_production"] = str(rec[10] or "")
-        self.data["planned_hours"]    = str(rec[11] or "")
-        self.data["availability"]     = str(rec[12])
-        self.data["performance"]      = str(rec[13])
-        self.data["quality"]          = str(rec[14])
-        # Recarregar widgets com os novos dados
-        super().reset()
-
-    def _clear_fields(self):
-        """Limpa todos os campos para um novo cadastro."""
-        self.data["id"] = None
-        for key in ["machine", "equipment_number", "workstation", "occurrence_type",
-                    "action_to_avoid", "register_date", "release_date", "responsible",
-                    "lost_units", "total_production", "planned_hours",
-                    "availability", "performance", "quality"]:
-            self.data[key] = ""
-        super().reset()
 
     def reset(self):
         self._resetting = True
@@ -313,35 +318,27 @@ class EditFrame(Frame):
         # Pre-selecionar o registro sendo editado no dropdown
         pending_id = getattr(self._list_frame, "_pending_edit_id", None)
         if pending_id is not None:
-            self.data["filter_machine"] = pending_id
+            self._dropdown.value = pending_id
             rec = self.manager.get_by_id(pending_id)
             if rec:
-                self.data["id"]               = rec[0]
-                self.data["machine"]          = rec[1]
-                self.data["equipment_number"] = rec[2] or ""
-                self.data["workstation"]      = rec[3] or ""
-                self.data["occurrence_type"]  = rec[4] or ""
-                self.data["action_to_avoid"]  = rec[5] or ""
-                self.data["register_date"]    = rec[6] or ""
-                self.data["release_date"]     = rec[7] or ""
-                self.data["responsible"]      = str(rec[8] or "")
-                self.data["lost_units"]       = str(rec[9] or "")
-                self.data["total_production"] = str(rec[10] or "")
-                self.data["planned_hours"]    = str(rec[11] or "")
-                self.data["availability"]     = str(rec[12])
-                self.data["performance"]      = str(rec[13])
-                self.data["quality"]          = str(rec[14])
+                # Popula data dict para que super().reset() tenha valores corretos
+                self.data["id"] = rec[0]
+                self.data["filter_machine"] = pending_id
+                for idx, name in self._FIELD_MAP:
+                    self.data[name] = str(rec[idx]) if rec[idx] is not None else ""
+            super().reset()
+            # Forcar widgets apos reset (garantia dupla)
+            if rec:
+                self._set_widgets_from_rec(rec)
         else:
             self.data["filter_machine"] = None
             self.data["id"] = None
-            for key in ["machine", "equipment_number", "workstation", "occurrence_type",
-                        "action_to_avoid", "register_date", "release_date", "responsible",
-                        "lost_units", "total_production", "planned_hours",
-                        "availability", "performance", "quality"]:
-                self.data[key] = ""
-        super().reset()
+            for _, name in self._FIELD_MAP:
+                self.data[name] = ""
+            super().reset()
         self._resetting = False
         self._update_oee()
+
 
     def _update_oee(self):
 
@@ -374,7 +371,10 @@ class EditFrame(Frame):
     def _new(self):
         """Limpa campos para cadastrar um novo registro."""
         self._list_frame._pending_edit_id = None
-        self._clear_fields()
+        self._resetting = True
+        self._clear_widgets()
+        self._dropdown.value = None
+        self._resetting = False
         self._update_oee()
 
     def _save(self):
