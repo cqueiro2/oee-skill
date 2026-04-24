@@ -1,14 +1,7 @@
 Traceback (most recent call last):
-  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 57, in <module>
-    main()
-  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 52, in main
-    skill = OEESkill()
-            ^^^^^^^^^^
-  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 17, in __init__
-    self.manager = Database(db_path)
-                   ^^^^^^^^^^^^^^^^^
-  File "D:\lab\14_Projects\OEE\src\oee_skill\modules\database.py", line 14, in __init__
-    self._seed_data()
-  File "D:\lab\14_Projects\OEE\src\oee_skill\modules\database.py", line 46, in _seed_data
-    self.cursor.executemany(
-sqlite3.OperationalError: 15 values for 14 columns
+  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 11, in <module>
+    from modules.ui import ListFrame, EditFrame, GraphFrame
+  File "D:\lab\14_Projects\OEE\src\oee_skill\modules\ui.py", line 373, in <module>
+    _chart_label.text = "\n".join(lines)
+                                  ^^^^^
+NameError: name 'lines' is not defined

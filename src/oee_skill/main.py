@@ -8,7 +8,7 @@ from asciimatics.scene import Scene
 from asciimatics.screen import Screen
 from config import config
 from modules.database import Database
-from modules.ui import ListFrame, EditFrame
+from modules.ui import ListFrame, EditFrame, GraphFrame
 
 
 class OEESkill:
@@ -36,10 +36,12 @@ class OEESkill:
     def run(self, screen):
         list_frame = ListFrame(screen, self.manager, self.shared_data)
         edit_frame = EditFrame(screen, self.manager, self.shared_data, list_frame)
+        graph_frame = GraphFrame(screen, self.manager, self.shared_data, list_frame)
         
         scenes = [
             Scene([list_frame], -1, name="Main"),
-            Scene([edit_frame], -1, name="Edit")
+            Scene([edit_frame], -1, name="Edit"),
+            Scene([graph_frame], -1, name="Graph")
         ]
         
         screen.play(scenes, stop_on_resize=False, start_scene=scenes[0])
