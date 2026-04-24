@@ -50,8 +50,8 @@ class ListFrame(Frame):
         self.manager = manager
         self._pending_edit_id = None  # ID do registro a ser editado
 
-        # Layout principal: 30% Lista, 70% Detalhes
-        layout = Layout([30, 70], fill_frame=True)
+        # Layout principal: 50% Lista, 50% Detalhes
+        layout = Layout([50, 50], fill_frame=True)
         self.add_layout(layout)
 
         # Coluna da Esquerda: Lista
