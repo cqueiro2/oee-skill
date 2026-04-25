@@ -1,7 +1,19 @@
 Traceback (most recent call last):
-  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 11, in <module>
-    from modules.ui import ListFrame, EditFrame, GraphFrame
-  File "D:\lab\14_Projects\OEE\src\oee_skill\modules\ui.py", line 373, in <module>
-    _chart_label.text = "\n".join(lines)
-                                  ^^^^^
-NameError: name 'lines' is not defined
+  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 61, in <module>
+    main()
+  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 57, in main
+    skill.launch()
+  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 52, in launch
+    Screen.wrapper(self.run)
+  File "D:\lab\14_Projects\OEE\.venv\Lib\site-packages\asciimatics\screen.py", line 1431, in wrapper
+    return func(screen)
+           ^^^^^^^^^^^^
+  File "D:\lab\14_Projects\OEE\src\oee_skill\main.py", line 37, in run
+    list_frame = ListFrame(screen, self.manager, self.shared_data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\lab\14_Projects\OEE\src\oee_skill\modules\ui.py", line 105, in __init__
+    buttons.add_widget(Button("Sair", self._quit), 5)
+  File "D:\lab\14_Projects\OEE\.venv\Lib\site-packages\asciimatics\widgets\layout.py", line 102, in add_widget
+    self._columns[column].append(widget)
+    ~~~~~~~~~~~~~^^^^^^^^
+IndexError: list index out of range

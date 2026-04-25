@@ -16,6 +16,9 @@ DEFAULT_METRICS = "0.00h"
 
 METRICAS = ['Disponibilidade', 'Performance', 'Qualidade', 'OEE']
 BLOCO = chr(9608)
+VERDE = chr(9607)
+AMARELO = chr(9607)
+VERMELHO = chr(9607)
 
 
 def draw_bar_graph(value: float, label: str = "", width: int = 30) -> str:
@@ -38,7 +41,7 @@ def draw_colored_bar(value: float, label: str = "", width: int = 30) -> str:
     elif percent >= 60:
         indicador = "[!!] "
     else:
-        indicador = "[!]"
+        indicador ="[ ! ] "
     
     bar = BLOCO * filled + "░" * (width - filled)
     return f"{label:<15} {indicador:<4} [{bar}] {percent:>5.1f}%"
@@ -92,13 +95,14 @@ class ListFrame(Frame):
 
         # Botoes na parte inferior
         layout.add_widget(Divider(), 0)
-        buttons = Layout([1, 1, 1, 1, 1])
+        buttons = Layout([1, 1, 1, 1, 1, 1])
         self.add_layout(buttons)
         buttons.add_widget(Button("Novo", self._add), 0)
         buttons.add_widget(Button("Editar", self._edit), 1)
         buttons.add_widget(Button("Excluir", self._delete), 2)
         buttons.add_widget(Button("Grafico", self._graph), 3)
-        buttons.add_widget(Button("Sair", self._quit), 4)
+        buttons.add_widget(Button("Dashboard", self._dashboard), 4)
+        buttons.add_widget(Button("Sair", self._quit), 5)
 
         self.fix()
         self._on_select()
@@ -178,6 +182,9 @@ class ListFrame(Frame):
 
     def _graph(self):
         raise NextScene("Graph")
+
+    def _dashboard(self):
+        raise NextScene("Dashboard")
 
     def update_list(self):
         self._list.options = self._get_options()
@@ -502,3 +509,165 @@ class GraphFrame(Frame):
 
         # TextBox.value recebe lista de strings (uma por linha)
         self._chart_view.value = lines
+
+
+class DashboardFrame(Frame):
+    def __init__(self, screen, manager, data, list_frame):
+        super().__init__(screen, screen.height, screen.width, data=data,
+                         title="DASHBOARD OEE - PAINEL GERAL", can_scroll=False)
+        self.manager = manager
+        self._list_frame = list_frame
+
+        self._dashboard_view = TextBox(Widget.FILL_FRAME, readonly=True, name="dashboard_view")
+
+        layout = Layout([100], fill_frame=True)
+        self.add_layout(layout)
+        layout.add_widget(self._dashboard_view)
+
+        buttons = Layout([1, 1])
+        self.add_layout(buttons)
+        buttons.add_widget(Button("Voltar", self._go_main), 0)
+        buttons.add_widget(Button("Atualizar", self._refresh), 1)
+        self.fix()
+
+        self._update_dashboard()
+
+    def _refresh(self):
+        self._update_dashboard()
+
+    def _go_main(self):
+        raise NextScene("Main")
+
+    def _update_dashboard(self):
+        records = self.manager.get_all()
+
+        SEP = "=" * 78
+        THIN = "-" * 78
+
+        lines = []
+        lines.append(SEP)
+        lines.append("              DASHBOARD OEE - PAINEL GERAL DE INDICADORES")
+        lines.append(SEP)
+
+        oee_global = availability_global = performance_global = quality_global = 0
+        total_maquinas = 0
+        disponibilidade_total = performance_total = qualidade_total = 0
+
+        maquinas_data = []
+
+        for rec in records:
+            machine = str(rec[1])[:15]
+            availability = float(rec[12] or 0)
+            performance = float(rec[13] or 0)
+            quality = float(rec[14] or 0)
+            oee = calculate_oee(availability, performance, quality) * 100
+
+            disponibilidade_total += availability
+            performance_total += performance
+            qualidade_total += quality
+            total_maquinas += 1
+
+            maquinas_data.append({
+                'machine': machine,
+                'availability': availability,
+                'performance': performance,
+                'quality': quality,
+                'oee': oee
+            })
+
+        if total_maquinas > 0:
+            availability_global = disponibilidade_total / total_maquinas
+            performance_global = performance_total / total_maquinas
+            quality_global = qualidade_total / total_maquinas
+            oee_global = calculate_oee(availability_global, performance_global, quality_global) * 100
+
+        lines.append("")
+        lines.append(SEP)
+        lines.append("                        INDICADORES GLOBAIS")
+        lines.append(SEP)
+
+        status_oee = calculate_status(oee_global / 100)
+        if oee_global >= 85:
+            emoji_status = "[★★★]"
+        elif oee_global >= 75:
+            emoji_status = "[★★ ]"
+        elif oee_global >= 60:
+            emoji_status = "[★  ]"
+        else:
+            emoji_status = "[   ]"
+
+        lines.append(f"  OEE Global...: {oee_global:>6.2f}% {emoji_status}")
+        lines.append(f"  Disponibilidade.: {availability_global:>6.2f}%")
+        lines.append(f"  Performance....: {performance_global:>6.2f}%")
+        lines.append(f"  Qualidade......: {quality_global:>6.2f}%")
+        lines.append(f"  Maquinas.......: {total_maquinas:>6d}")
+        lines.append(THIN)
+
+        lines.append("")
+        lines.append(SEP)
+        lines.append("                     PERFORMANCE POR MAQUINA")
+        lines.append(SEP)
+        lines.append(f"  {'Maquina':<16} {'Disp':>7} {'Perf':>7} {'Qual':>7} {'OEE':>7} {'Status':<10}")
+        lines.append(THIN)
+
+        if maquinas_data:
+            maquinas_data.sort(key=lambda x: x['oee'], reverse=True)
+            for m in maquinas_data:
+                status = calculate_status(m['oee'] / 100)
+                if m['oee'] >= 85:
+                    status_str = "EXCELLENT"
+                elif m['oee'] >= 75:
+                    status_str = "GOOD"
+                elif m['oee'] >= 60:
+                    status_str = "REGULAR"
+                else:
+                    status_str = "CRITICAL"
+
+                lines.append(f"  {m['machine']:<16} {m['availability']:>6.1f}% {m['performance']:>6.1f}% {m['quality']:>6.1f}% {m['oee']:>6.1f}% {status_str:<10}")
+        else:
+            lines.append("  Nenhum dado cadastrado.")
+
+        lines.append(THIN)
+        lines.append("")
+        lines.append(SEP)
+        lines.append("                           METAS OEE")
+        lines.append(SEP)
+        lines.append(f"  Meta Global.......: 85.00%")
+        linha_meta = ""
+        if oee_global >= 85:
+            linha_meta = "[ATINGIDA]"
+        else:
+            linha_meta = "[ABAIXO DA META]"
+        lines.append(f"  Status Atual......: {oee_global:>6.2f}% {linha_meta}")
+        lines.append(THIN)
+
+        lines.append("")
+        lines.append(SEP)
+        lines.append("                     DISTRIBUICAO DE PERFORMANCE")
+        lines.append(SEP)
+
+        excelente = sum(1 for m in maquinas_data if m['oee'] >= 85)
+        bom = sum(1 for m in maquinas_data if 75 <= m['oee'] < 85)
+        regular = sum(1 for m in maquinas_data if 60 <= m['oee'] < 75)
+        critico = sum(1 for m in maquinas_data if m['oee'] < 60)
+
+        pct_exc = (excelente / total_maquinas * 100) if total_maquinas > 0 else 0
+        pct_bom = (bom / total_maquinas * 100) if total_maquinas > 0 else 0
+        pct_reg = (regular / total_maquinas * 100) if total_maquinas > 0 else 0
+        pct_crit = (critico / total_maquinas * 100) if total_maquinas > 0 else 0
+
+        linhas_grafico = [
+            f"  Excelente (>=85%): {excelente:>3d} ({pct_exc:>5.1f}%) {'#' * excelente}" if excelente > 0 else f"  Excelente (>=85%): {excelente:>3d} ({pct_exc:>5.1f}%)",
+            f"  Bom (75-85%)......: {bom:>3d} ({pct_bom:>5.1f}%) {'#' * bom}" if bom > 0 else f"  Bom (75-85%)......: {bom:>3d} ({pct_bom:>5.1f}%)",
+            f"  Regular (60-75%).: {regular:>3d} ({pct_reg:>5.1f}%) {'#' * regular}" if regular > 0 else f"  Regular (60-75%).: {regular:>3d} ({pct_reg:>5.1f}%)",
+            f"  Critico (<60%)...: {critico:>3d} ({pct_crit:>5.1f}%) {'!' * critico}" if critico > 0 else f"  Critico (<60%)...: {critico:>3d} ({pct_crit:>5.1f}%)",
+        ]
+        lines.extend(linhas_grafico)
+
+        lines.append(THIN)
+        lines.append("")
+        lines.append(SEP)
+        lines.append(f"  Atualizado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+        lines.append(SEP)
+
+        self._dashboard_view.value = lines
